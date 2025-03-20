@@ -7,4 +7,4 @@ This repository is used to perform the R assignment for BCB546 for Spring 2025. 
 3. 10 files for **Teosinte** genotype information, corresponding to each chromosome where the missing data is encoded by **'?'** symbol and the SNP positions are arranged in **ascending** order. These files are in .txt format. They are named as 'teo_chr_1.txt', 'teo_chr_2.txt' etc.
 4. 10 files for **Teosinte** genotype information, corresponding to each chromosome where the missing data is encoded by **'-'** symbol and the SNP positions are arranged in **descending** order. These files are in .txt format. They are named as 'teo_rev_chr_1.txt', 'teo_rev_chr_2.txt' etc.
 
-   The generated plots will be published in the R markdown file. The R Markdown is knit and published as a HTML file. To view this HTML file, please download it and view it on your browser.
+   The generated plots will be published in the R markdown file. The R Markdown is knit and published as a HTML file. To view this HTML file, please **download** it and view it on your browser.
