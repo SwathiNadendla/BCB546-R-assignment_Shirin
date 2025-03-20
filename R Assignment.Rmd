@@ -1,0 +1,228 @@
+---
+title: "BCB546_Assignment"
+author: "Shirin Parvin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## R Assignment_BCB546_Spring2025
+### Submitted by Shirin Parvin
+
+## Part I 
+
+### _Data Inspection_
+
+There are two data files given to us `fang_et_al_genotypes.txt` and `snp_position.txt`. 
+
+
+```{r}
+#Calling the libraries needed
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+#Loading the data files in R as dataframes, and inspecting their content such as number of rows, columns column names etc
+
+genotype.df <- read.table("fang_et_al_genotypes.txt", sep = "\t", header = TRUE)
+nrow(genotype.df)
+ncol(genotype.df)
+str(genotype.df)
+
+snp.df <- read.table("snp_position.txt", sep = "\t", header = TRUE)
+nrow(snp.df)
+ncol(snp.df)
+str(snp.df)
+
+```
+
+From inspecting the dataframes, we can describe their structure as follows:
+
+1. genotype.df = the dataframe containing the data from `fang_et_al_genotypes.txt`. It has 2782 rows (observations) and 986 columns (variables). Some of its column names are 'Sample_ID', 'Group', etc
+
+2. snp.df = the dataframe containing the data from `snp_positions.txt`. It has 983 rows (observations) and 15 columns (variables). Some of its column names are 'SNP_ID', 'Chromosome','Position', 'alt_pos','mult_positions', etc
+
+
+### _Data Processing_
+
+Since we do not need all the data present in the dataframe `snp.df`, we select only the relevant column data (SNP_ID, Chromosome and Position) and store it into a new dataframe `snp_clean.df`.
+
+```{r}
+#Selecting the relevant SNP data only
+snp_clean.df <- snp.df[c('SNP_ID','Chromosome','Position')]
+```
+
+
+For ease of use later, we separate out the maize and teosinte data into separate dataframes. Further, we transpose the dataframes and remove the unnecessary rows to facilitate merging of the snp data with the genotype data for data analysis.
+
+```{r}
+#Creating the maize data
+maize_data.df <- filter(genotype.df, `Group` %in% c('ZMMIL','ZMMLR','ZMMMR'))
+maize_transpose.df <- data.frame(t(maize_data.df))
+maize_clean.df <- maize_transpose.df[-c(1:3),]
+rownames(maize_clean.df) <- NULL
+
+#Creating the teosinte data
+teosinte_data.df <- filter(genotype.df, `Group` %in% c('ZMPBA','ZMPIL','ZMPJA'))
+teosinte_transpose.df <- data.frame(t(teosinte_data.df))
+teosinte_clean.df <- teosinte_transpose.df[-c(1:3), ]
+rownames(teosinte_clean.df) <- NULL
+```
+
+After cleaning the individual data sets, I joined the genotype data set with the snp data to create a master data set, which I will use for further analysis. `maize.df` contains the master data set for maize after joining, while `teosinte.df` is the master data set for the teosinte data after joining. 
+
+```{r}
+#Creating the master datasets
+maize.df <- cbind(snp_clean.df,maize_clean.df)
+teosinte.df <- cbind(snp_clean.df,teosinte_clean.df)
+```
+
+
+```{r}
+#Maize data
+
+#Set 1:
+
+#SNPs ordered in increasing position with missing values encoded by '?' symbol
+maize_sorted.df <- maize.df %>%
+  arrange (as.numeric(Chromosome),as.numeric(Position))
+
+#Generating the file set:
+#Step 1: Selecting each unique chromosome
+maize_chrom.l <- unique(maize_sorted.df$Chromosome)
+
+#Step 2: Defining a function to write a dataframe for the selected chromosome
+write_maize_data <- function(chrom_num)
+  {
+  maize_chrom_data.df <- filter(maize_sorted.df, Chromosome == chrom_num)
+  file_name <- paste0('maize_chr_',chrom_num,'.txt')
+  write.table (maize_chrom_data.df, file = file_name, quote = FALSE, sep = '\t', row.names = FALSE, col.names = TRUE)
+}
+
+#Step 3: Applying Step 2 to all chromosomes
+lapply (maize_chrom.l, write_maize_data)
+
+```
+
+
+
+```{r}
+#Set 2
+
+#SNPs ordered in decreasing position with missing values encoded by '-' symbol
+
+maize_rev_sorted.df <- maize.df %>%
+  arrange (as.numeric(Chromosome),desc(as.numeric(Position)))   #sorting in decreasing order
+
+maize_rev_sorted.df[maize_rev_sorted.df == '?/?'] <- '-/-'    #replacing the '?' with '-'
+
+#Generating the file set:
+#Step 1: We are reusing the list of chromosomes generated in first set since the chromosome number did not change  
+maize_chrom.l <- unique(maize_sorted.df$Chromosome)
+
+#Step 2: Defining a function to write a dataframe for the selected chromosome
+
+write_maize_rev_data <- function(chrom_num)
+  {
+  maize_chrom_rev_data.df <- filter(maize_rev_sorted.df, Chromosome == chrom_num)
+  file_name <- paste0('maize_rev_chr_',chrom_num,'.txt')
+  write.table (maize_chrom_rev_data.df, file = file_name, quote = FALSE, sep = '\t', row.names = FALSE, col.names = TRUE)
+}
+
+#Step 3: Applying Step 2 to all chromosomes
+lapply (maize_chrom.l, write_maize_rev_data)
+
+```
+
+
+
+
+
+
+
+```{r}
+#Teosinte data
+
+#Set 1:
+
+#SNPs ordered in increasing position with missing values encoded by '?' symbol
+teosinte_sorted.df <- teosinte.df %>%
+  arrange (as.numeric(Chromosome),as.numeric(Position))
+
+#Generating the file set:
+#Step 1: Selecting each unique chromosome
+teo_chrom.l <- unique(teosinte_sorted.df$Chromosome)
+
+
+#Step 2: Defining a function to write a dataframe for the selected chromosome
+write_teo_data <- function(chrom_num)
+  {
+  teosinte_chrom_data.df <- filter(teosinte_sorted.df, Chromosome == chrom_num)
+  file_name <- paste0('teo_chr_',chrom_num,'.txt')
+  write.table (teosinte_chrom_data.df, file = file_name, quote = FALSE, sep = '\t', row.names = FALSE, col.names = TRUE)
+}
+
+#Step 3: Applying Step 2 to all chromosomes
+lapply (teo_chrom.l, write_teosinte_data)
+
+```
+
+
+```{r}
+#Set 2
+
+#SNPs ordered in decreasing position with missing values encoded by '-' symbol
+
+teo_rev_sorted.df <- teosinte.df %>%
+  arrange (as.numeric(Chromosome),desc(as.numeric(Position)))   #sorting in decreasing order
+
+teo_rev_sorted.df[teo_rev_sorted.df == '?/?'] <- '-/-'    #replacing the '?' with '-'
+
+#Generating the file set:
+#Step 1: We are reusing the list of chromosomes generated in first set since the chromosome number did not change  
+teo_chrom.l <- unique(teosinte_sorted.df$Chromosome)
+
+#Step 2: Defining a function to write a dataframe for the selected chromosome
+
+write_teo_rev_data <- function(chrom_num)
+  {
+  teo_chrom_rev_data.df <- filter(teo_rev_sorted.df, Chromosome == chrom_num)
+  file_name <- paste0('teo_rev_chr_',chrom_num,'_rev.txt')
+  write.table (teo_chrom_rev_data.df, file = file_name, quote = FALSE, sep = '\t', row.names = FALSE, col.names = TRUE)
+}
+
+#Step 3: Applying Step 2 to all chromosomes
+lapply (teo_chrom.l, write_teo_rev_data)
+
+```
+
+
+
+
+
+## Part II
+
+### _Data Visualization_
+
+
+
+
+```{r}
+#Calling the libraries needed
+library(tidyverse)
+library(ggplot2)
+```
+
+
+
+```{r}
+#Reshaping the data to help facilitate plotting analysis
+
+
+
+
+
+```
+
+
