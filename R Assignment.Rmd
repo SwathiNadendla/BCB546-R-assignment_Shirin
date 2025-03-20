@@ -13,13 +13,13 @@ output: html_document
 ### _Data Inspection_
 
 There are two data files given to us `fang_et_al_genotypes.txt` and `snp_position.txt`. 
-
+For all the data manipulation necessary, we first call the`tidyverse` library.
 
 ```{r}
 #Calling the libraries needed
-library(dplyr)
-library(ggplot2)
+library(tidyverse)
 ```
+Then, we read the data files into our system and inspect its content.
 
 
 ```{r}
@@ -78,6 +78,13 @@ maize.df <- cbind(snp_clean.df,maize_clean.df)
 teosinte.df <- cbind(snp_clean.df,teosinte_clean.df)
 ```
 
+Now we will try to generate the files requested in the assignment.
+We will deal with the Maize and Teosinte data separately for ease of data handling. Only con is that we will generate a lot of intermediate and final objects. 
+
+#### Maize data
+
+First, we deal with the Maize data. In file set 1, we are suppsed to generate 10 files, each corresponding to a chromosome, in which the positions are sorted in increasing order and the missing value is encoded by the '?' symbol.
+Here, we define a function `write_maize_data` that filters out the data for each chromosome and then saves the data into a new file with a unique name. We then use the `lapply` function to repeat this function for all the chromosomes.
 
 ```{r}
 #Maize data
@@ -104,7 +111,7 @@ write_maize_data <- function(chrom_num)
 lapply (maize_chrom.l, write_maize_data)
 
 ```
-
+For file set 2, we need to replace the encoding of the missing data by the '-' symbol and sort the position in descending order, for each chromosome. We need to generate 10 files, corresponding to each chromosome. Similar to before, we define a `write_maize_rev_data` function to help facilitate this. The generated files are saved with their unique names.
 
 
 ```{r}
@@ -138,7 +145,10 @@ lapply (maize_chrom.l, write_maize_rev_data)
 
 
 
+#### Teosinte data
 
+After the maize data, we deal with the Teosinte data. Just like above, in file set 1, we are suppsed to generate 10 files, each corresponding to a chromosome, in which the positions are sorted in increasing order and the missing value is encoded by the '?' symbol.
+Correspondinly, we define a function `write_teo_data` that filters out the data for each chromosome and then saves the data into a new file with a unique name. We then use the `lapply` function to repeat this function for all the chromosomes.
 
 
 ```{r}
@@ -164,9 +174,11 @@ write_teo_data <- function(chrom_num)
 }
 
 #Step 3: Applying Step 2 to all chromosomes
-lapply (teo_chrom.l, write_teosinte_data)
+lapply (teo_chrom.l, write_teo_data)
 
 ```
+
+Again, for file set 2, we need to replace the encoding of the missing data by the '-' symbol and sort the position in descending order, for each chromosome. We need to generate 10 files, corresponding to each chromosome. Similar to before, we define a `write_teo_rev_data` function to help facilitate this. The generated files are saved with their unique names.
 
 
 ```{r}
@@ -206,23 +218,245 @@ lapply (teo_chrom.l, write_teo_rev_data)
 ### _Data Visualization_
 
 
-
+For data visualization, we first call the necessary libraries: `ggplot` and `viridis`.
 
 ```{r}
 #Calling the libraries needed
-library(tidyverse)
 library(ggplot2)
+library(viridis)
+```
+This data visualisation part will consist of three parts:
+1. SNPs per Chromosome
+2. Missing data and amount of heterozygosity
+3. My own visualization.
+
+To help with the visualization, we will be using the `pivot_longer()` function to reshape the data. For ease of data handling, I will continue to use the two individual data sets for maize and teosinte and NOT combine them into a master dataset.
+
+
+### SNPs per Chromosome
+
+#### Maize data
+
+First, we manipulate and look into the Maize dataset.
+Plot 1 will show the distribution of SNPs along the different positions of each chromosome and will show that for all the chromosomes. 
+```{r}
+# Maize Data
+
+#Reshaping the data to help facilitate plotting analysis
+
+maize_pivot.df <- pivot_longer(maize_sorted.df, cols = -c(SNP_ID,Chromosome,Position), names_to = NULL, values_to = 'Genotype')
+
+#Converting the Chromosome and Position to numeric values for easier plotting
+maize_pivot.df$Chromosome <- as.numeric(maize_pivot.df$Chromosome)
+maize_pivot.df$Position <- as.numeric(maize_pivot.df$Position)
+
+# Final Maize SNP data used for visualisation
+maize_SNP.df <- maize_pivot.df %>% drop_na()
+
+
+#Plotting the distribution of SNPs on and across Chromosome
+
+ggplot(data = maize_SNP.df) + 
+  geom_density(mapping = aes(x = Position, fill = factor(Chromosome))) + 
+  facet_wrap( ~ factor(Chromosome), scales = "free_x") + 
+  scale_fill_discrete() + 
+  labs (title = 'Maize SNP distribution on each Chromosome', 
+        x = 'Position on Chromsome', 
+        y = 'Distribution density', 
+        fill = 'Chromosome') + 
+  theme( plot.title = element_text(size = 20),
+         axis.title.x = element_text(size = 16),
+         axis.title.y = element_text (size = 16)
+  )
 ```
 
+Further we also summarized the number of SNPs in each chromosome and plotted them to get a better idea of what is happening.
+
+```{r}
+
+# Calculating and plotting the number of Maize SNP across chromosome
+
+maize_result.df <- maize_SNP.df %>%
+  group_by(Chromosome) %>%
+  summarise(SNP_count = n())
+
+
+ggplot(maize_result.df) +
+  geom_bar(mapping = aes(x = Chromosome, y = SNP_count,fill = factor( Chromosome)), stat = 'identity') + scale_fill_discrete() +
+  labs(title = "SNP counts for Maize by Chromosome",
+       x = "Chromosome number",
+       y = "Count",
+       fill = "Chromosome")
+
+```
+
+#### Teosinte data
+
+Next, we manipulate and look into the Teosinte dataset.
+Again, Plot 1 will show the distribution of SNPs along the different positions of each chromosome and will show that for all the chromosomes.
+
+```{r}
+# Teosinte Data
+
+#Reshaping the data to help facilitate plotting analysis
+
+teo_pivot.df <- pivot_longer(teosinte_sorted.df, cols = -c(SNP_ID,Chromosome,Position), names_to = NULL, values_to = 'Genotype')
+
+#Converting the Chromosome and Position to numeric values for easier plotting
+teo_pivot.df$Chromosome <- as.numeric(teo_pivot.df$Chromosome)
+teo_pivot.df$Position <- as.numeric(teo_pivot.df$Position)
+
+# Final Teosinte SNP data used for visualisation
+teo_SNP.df <- teo_pivot.df %>% drop_na()
+
+
+
+#Plotting the distribution of SNPs on and across Chromosome
+
+ggplot(data = teo_SNP.df) + 
+  geom_density(mapping = aes(x = Position, fill = factor(Chromosome))) + 
+  facet_wrap( ~ factor(Chromosome), scales = "free_x") + 
+  scale_fill_viridis_d() + 
+  labs (title = 'Teosinte SNP distribution on each Chromosome', 
+        x = 'Position on Chromsome', 
+        y = 'Distribution density', 
+        fill = 'Chromosome') + 
+  theme( plot.title = element_text(size = 20),
+         axis.title.x = element_text(size = 16),
+         axis.title.y = element_text (size = 16)
+  )
+
+```
+
+Further we also summarized the number of SNPs in each chromosome and plotted them to get a better idea of what is happening.
 
 
 ```{r}
-#Reshaping the data to help facilitate plotting analysis
+# Calculating and plotting the number of Maize SNP across chromosome
+
+teo_result.df <- teo_SNP.df %>%
+  group_by(Chromosome) %>%
+  summarise(SNP_count = n())
 
 
+ggplot(teo_result.df) +
+  geom_bar(mapping = aes(x = Chromosome, y = SNP_count,fill = factor( Chromosome)), stat = 'identity') + scale_fill_viridis_d() +
+  labs(title = "SNP counts for Teosinte by Chromosome",
+       x = "Chromosome number",
+       y = "Count",
+       fill = "Chromosome")
+
+```
+
+Next, we wanted to compare which among the two datasets: Maize and Teosinte had more number of SNP positions. First we calculated it. 
+
+```{r}
+# Comparing number of SNP positions in maize and teosinte individuals
+
+maize_total_SNP = sum(maize_result.df$SNP_count)
+teo_total_SNP = sum(teo_result.df$SNP_count)
+
+if (maize_total_SNP > teo_total_SNP){
+  print(" Maize individuals has more SNP positions")
+}else if (teo_total_SNP > maize_total_SNP){
+  print (" Teosinte individuals has more SNP positions")
+}else {
+  print (" Maize and Teosinte individuals have same number of SNP positions")
+}
+```
+
+Next we confirmed our conclusion from the calculation by visualising the two datasets and their corresponging SNP frequencies.
+
+```{r}
+#Plotting the SNP counts for visual confirmation
+combined_data <- rbind(
+  maize_result.df %>% mutate(Source = "Maize_SNP"),
+  teo_result.df %>% mutate(Source = "Teosinte_SNP")
+)
+
+ggplot (data = combined_data,
+        aes(x = Chromosome, y = SNP_count, fill= Source)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs (title = "SNP counts by chromosome for Maize and Teosinte",
+        x = "Chromosome number",
+        y = "SNP counts") +
+  scale_fill_brewer(palette = "Set1")
+```
 
 
+### Missing data and amount of heterozygosity
+
+Next we are interested in investigating what proportions of the SNPs belong to different zygosity and also will look into the amount of missing data we have for each dataset. 
+
+Like always, we first look into the Maize data and plot the proportion of zygosity.
+
+```{r}
+# Adding Zygosity to Maize SNP data
+
+maize_SNP.df$Zygosity <- ifelse (maize_SNP.df$Genotype %in%
+                                   c('A/A','C/C','G/G','T/T'), 'Homozygous',
+                                 ifelse(maize_SNP.df$Genotype == '?/?', 'Missing','Heterzygous'))
+
+# Plotting proportion of Maize zygosity
+ggplot(data = maize_SNP.df) +
+  geom_bar(mapping = aes(x = SNP_ID, fill = Zygosity), position = "fill") +
+  labs(title = "Zygosity proportion of Maize samples",
+       x = "Each line is a sample",
+       y = "Proportion of zygosity") +
+  theme(plot.title = element_text(size = 20),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
 
 ```
 
 
+
+Next, we look into the Teosinte data and plot the proportion of zygosity.
+
+```{r}
+# Adding Zygosity to Teosinte SNP data
+
+teo_SNP.df$Zygosity <- ifelse (teo_SNP.df$Genotype %in%
+                                   c('A/A','C/C','G/G','T/T'), 'Homozygous',
+                                 ifelse(teo_SNP.df$Genotype == '?/?', 'Missing','Heterzygous'))
+
+# Plotting proportion of Teosinte zygosity
+ggplot(data = teo_SNP.df) +
+  geom_bar(mapping = aes(x = SNP_ID, fill = Zygosity), position = "fill") +
+  labs(title = "Zygosity proportion of Teosinte samples",
+       x = "Each line is a sample",
+       y = "Proportion of zygosity") +
+  theme(plot.title = element_text(size = 20),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16)) +
+  scale_fill_brewer(palette = "Set2")
+
+```
+
+
+### My own visualization
+
+As part of my own visualization, I was interested to see what heterzygosities are more prevalent on each chromosome and across the different chromosomes in Maize. While, I have only visualized it for Maize, we can perform similar visualization for the Teosinte data. This was interesting and gave me insights into the different trends of heterozygosity in different chromosomes. If we were to know that a certain chromosome is related to a particular phenotype, we could further look into the trends of heterozygosity in that chromosome. 
+
+```{r}
+# Want to visualize which SNP is most prevalent among the heterzygotes on and across the chromsomes in Maize
+
+maize_heter.df <- filter(maize_SNP.df, maize_SNP.df$Zygosity == 'Heterzygous') %>%
+  group_by(Chromosome,Genotype) %>%
+  summarise(SNP_count = n())
+
+ggplot(data = maize_heter.df) +
+  geom_col(mapping = aes(x = Genotype, y = SNP_count, fill = Genotype)) +
+  facet_wrap(~factor(Chromosome)) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Combinations of heterzygosity prevalent in Maize chromosome",
+       x = "Genotype",
+       y = "SNP_count") +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        plot.title = element_text(size = 20)
+  )
+```
